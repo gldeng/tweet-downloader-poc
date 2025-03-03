@@ -1,53 +1,28 @@
-# Aevatar Starter Template
+# TweetDownloader
+An example of a tweet downloader using Aevatar AI framework.
 
-This repository contains three projects that work together to demonstrate the use of the Aevatar framework with Orleans. The projects are:
+## Requirements
+- Docker
+- Docker Compose
 
-1. **Silo Project**(AevatarTemplate.Silo)
-2. **Client Project**(AevatarTemplate.Client)
-3. **GAgents Project**(AevatarTemplate.GAgents)
+## Usage
 
-## Projects Overview
+1. Start neo4j and mongodb
 
-### Silo Project
-
-The Silo project is responsible for starting the Orleans Silo Host. It hosts all the GAgents as grains.
-
-### Client Project
-
-The Client project is used to create and interact with GAgents. It connects to the Silo Host and performs operations on the GAgents.
-
-### GAgents Project
-
-The GAgents project is used to define new GAgent types. You can refer to the `SampleGAgent` for an example of how to define a new GAgent type.
-
-## Startup Process
-
-To start the projects, follow these steps:
-
-1. **Start the Silo Project**: This will start the Orleans Silo Host and host all the GAgents as grains.
-2. **Start the Client Project**: This will connect to the Silo Host and allow you to create and interact with GAgents.
-
-## Running the Projects
-
-### Start the Silo Project
-
-Navigate to the Silo project directory and run the following command:
-
-```sh
-dotnet run --project src/AevatarTemplate.Silo
+```
+docker compose up -d
 ```
 
-### Start the Client Project
+2. Run the Silo
 
-Navigate to the Client project directory and run the following command:
-
-```sh
-dotnet run --project src/AevatarTemplate.Client
+```
+dotnet run --project src/TweetDownloader.Silo/TweetDownloader.Silo.csproj
 ```
 
-By following these steps, you will be able to start the Silo Host and interact with GAgents using the Client project.
+3. Run the Client
 
-## Technologies Used
-- [.NET Core](https://dotnet.microsoft.com/)
-- [Orleans](https://dotnet.github.io/orleans/)
-- [AevatarAI](https://aevatar.ai/)
+```
+export TWITTER_BEARER_TOKEN=<YOUR_X_API_TOKEN>
+export TWITTER_USER_IDS=<YOUR_USER_IDS> # comma separated list of user ids, example: 1371263177288130561
+dotnet run --project src/TweetDownloader.Client/TweetDownloader.Client.csproj
+```
