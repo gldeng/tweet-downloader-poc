@@ -244,7 +244,7 @@ public class TweetsDownloaderGrain :
         }
     }
 
-    public async Task<List<Tweet>> DownloadPostsForUserAsync(string userId, int maxPosts = 10)
+    private async Task<List<Tweet>> DownloadPostsForUserAsync(string userId, int maxPosts = 10)
     {
         if (string.IsNullOrEmpty(State.Configuration.BearerToken))
         {
@@ -310,7 +310,7 @@ public class TweetsDownloaderGrain :
         return posts;
     }
 
-    public async Task DownloadPostsForAllMonitoredAccountsAsync(int maxPostsPerAccount = 10)
+    private async Task DownloadPostsForAllMonitoredAccountsAsync(int maxPostsPerAccount = 10)
     {
         foreach (var userId in State.Configuration.UserIds)
         {
