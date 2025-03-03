@@ -24,22 +24,52 @@ public class TwitterDownloaderConfiguration : ConfigurationBase
 [GenerateSerializer]
 public class TweetsDownloaderState : StateBase
 {
-    [Id(0)] public string BearerToken { get; set; } = string.Empty;
-    [Id(1)] public List<string> UserIds { get; set; } = new List<string>();
-
-    [Id(2)]
-    public Dictionary<string, List<Tweet>> DownloadedPosts { get; set; } = new Dictionary<string, List<Tweet>>();
-
+    [Id(0)] public bool Configured { get; set; } = false;
+    [Id(1)] public string BearerToken { get; set; } = string.Empty;
+    [Id(2)] public List<string> UserIds { get; set; } = new List<string>();
     [Id(3)] public TimeSpan PollingInterval { get; set; } = TimeSpan.FromMinutes(15);
-    [Id(4)] public bool Configured { get; set; } = false;
-    [Id(5)] public string Neo4jUri { get; set; } = string.Empty;
-    [Id(6)] public string Neo4jUser { get; set; } = string.Empty;
-    [Id(7)] public string Neo4jPassword { get; set; } = string.Empty;
-    [Id(8)] public Dictionary<string, string> LastTweetIdPerUser { get; set; } = new Dictionary<string, string>();
+    [Id(4)] public string Neo4jUri { get; set; } = string.Empty;
+    [Id(5)] public string Neo4jUser { get; set; } = string.Empty;
+    [Id(6)] public string Neo4jPassword { get; set; } = string.Empty;
+    [Id(7)] public Dictionary<string, string> LastTweetIdPerUser { get; set; } = new Dictionary<string, string>();
+
+    public void Apply(TweetsDownloaderConfiguredEvent @event)
+    {
+        this.BearerToken = @event.BearerToken;
+        this.UserIds = @event.UserIds;
+        this.PollingInterval = @event.PollingInterval;
+        this.Neo4jUri = @event.Neo4jUri;
+        this.Neo4jUser = @event.Neo4jUser;
+        this.Neo4jPassword = @event.Neo4jPassword;
+        this.Configured = true;
+    }
+
+    public void Apply(TweetsDownloadedEvent @event)
+    {
+        this.LastTweetIdPerUser[@event.UserId] = @event.Tweets.Last().Id;
+    }
 }
 
 [GenerateSerializer]
 public class TweetsDownloaderStateLogEvent : StateLogEventBase<TweetsDownloaderStateLogEvent>;
+
+[GenerateSerializer]
+public class TweetsDownloaderConfiguredEvent : TweetsDownloaderStateLogEvent
+{
+    [Id(0)] public string BearerToken { get; set; } = string.Empty;
+    [Id(1)] public List<string> UserIds { get; set; } = new List<string>();
+    [Id(2)] public TimeSpan PollingInterval { get; set; } = TimeSpan.FromMinutes(15);
+    [Id(3)] public string Neo4jUri { get; set; } = string.Empty;
+    [Id(4)] public string Neo4jUser { get; set; } = string.Empty;
+    [Id(5)] public string Neo4jPassword { get; set; } = string.Empty;
+}
+
+[GenerateSerializer]
+public class TweetsDownloadedEvent : TweetsDownloaderStateLogEvent
+{
+    [Id(0)] public string UserId { get; set; } = string.Empty;
+    [Id(1)] public List<Tweet> Tweets { get; set; } = new List<Tweet>();
+}
 
 [GAgent]
 public class TweetsDownloaderGrain :
@@ -131,7 +161,7 @@ public class TweetsDownloaderGrain :
         return Task.FromResult("This GAgent downloads and monitors posts from X (Twitter) accounts.");
     }
 
-    protected override Task PerformConfigAsync(TwitterDownloaderConfiguration config)
+    protected override async Task PerformConfigAsync(TwitterDownloaderConfiguration config)
     {
         State.BearerToken = config.BearerToken;
         State.UserIds = config.UserIds;
@@ -148,7 +178,16 @@ public class TweetsDownloaderGrain :
         // when it's not received configuration. So we need to try to register it again here.
         RegisterTimer();
 
-        return Task.CompletedTask;
+        RaiseEvent(new TweetsDownloaderConfiguredEvent
+        {
+            BearerToken = config.BearerToken,
+            UserIds = config.UserIds,
+            PollingInterval = config.PollingInterval,
+            Neo4jUri = config.Neo4jUri,
+            Neo4jUser = config.Neo4jUser,
+            Neo4jPassword = config.Neo4jPassword
+        });
+        await ConfirmEvents();
     }
 
     protected override Task OnGAgentActivateAsync(CancellationToken token)
@@ -268,11 +307,6 @@ public class TweetsDownloaderGrain :
                 maxResults: maxPosts,
                 tweetFields: new List<string> { "created_at", "author_id", "text" }));
         });
-        if (!State.DownloadedPosts.ContainsKey(userId))
-        {
-            State.DownloadedPosts[userId] = new List<Tweet>();
-        }
-
         var posts = new List<Tweet>();
 
         if (!tweetsResponse.TryOk(out var tweetsPayload))
@@ -288,18 +322,18 @@ public class TweetsDownloaderGrain :
 
             foreach (var tweet in sortedTweets)
             {
-                // Add only new posts to state
-                if (!State.DownloadedPosts[userId].Any(p => p.Id == tweet.Id))
-                {
-                    State.DownloadedPosts[userId].Add(tweet);
-                    await StoreTweetInNeo4jAsync(tweet, userId);
-                }
+                await StoreTweetInNeo4jAsync(tweet, userId);
+                posts.Add(tweet);
             }
 
-            // Update the last tweet ID for this user with the most recent tweet ID
-            var latestTweetId = sortedTweets.Last().Id;
-            State.LastTweetIdPerUser[userId] = latestTweetId;
-            _logger.LogInformation("Updated last tweet ID for user {UserId} to {TweetId}", userId, latestTweetId);
+            RaiseEvent(new TweetsDownloadedEvent
+            {
+                UserId = userId,
+                Tweets = posts
+            });
+            await ConfirmEvents();
+
+            _logger.LogInformation("Updated last tweet ID for user {UserId} to {TweetId}", userId, posts.Last().Id);
         }
         else
         {
