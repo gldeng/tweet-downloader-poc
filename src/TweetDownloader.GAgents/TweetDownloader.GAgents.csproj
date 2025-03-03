@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>TweetDownloader.GAgents</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Aevatar.Core"/>
+        <PackageReference Include="Microsoft.Orleans.Reminders"/>
+        <PackageReference Include="Neo4j.Driver"/>
+        <PackageReference Include="Newtonsoft.Json"/>
+        <PackageReference Include="Polly"/>
+        <PackageReference Include="RestSharp"/>
+        <PackageReference Include="JsonSubTypes"/>
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Org.OpenAPITools\Org.OpenAPITools.csproj"/>
+    </ItemGroup>
+</Project>

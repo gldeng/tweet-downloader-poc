@@ -1,0 +1,42 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{17D05222-A16E-4AE4-A639-64EF553CEB7D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TweetDownloader.Client", "src\TweetDownloader.Client\TweetDownloader.Client.csproj", "{0F342899-42B6-48F4-8E1A-E09524E4FD8C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TweetDownloader.GAgents", "src\TweetDownloader.GAgents\TweetDownloader.GAgents.csproj", "{D2B5B361-F69F-4261-AA05-049E389CC045}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TweetDownloader.Silo", "src\TweetDownloader.Silo\TweetDownloader.Silo.csproj", "{511B2977-F18D-4B36-BFDF-02507C7E18A2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Org.OpenAPITools", "src\Org.OpenAPITools\Org.OpenAPITools.csproj", "{67909D36-7990-44A7-99CB-BCFE16FCA18B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{0F342899-42B6-48F4-8E1A-E09524E4FD8C} = {17D05222-A16E-4AE4-A639-64EF553CEB7D}
+		{D2B5B361-F69F-4261-AA05-049E389CC045} = {17D05222-A16E-4AE4-A639-64EF553CEB7D}
+		{511B2977-F18D-4B36-BFDF-02507C7E18A2} = {17D05222-A16E-4AE4-A639-64EF553CEB7D}
+		{67909D36-7990-44A7-99CB-BCFE16FCA18B} = {17D05222-A16E-4AE4-A639-64EF553CEB7D}
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0F342899-42B6-48F4-8E1A-E09524E4FD8C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0F342899-42B6-48F4-8E1A-E09524E4FD8C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0F342899-42B6-48F4-8E1A-E09524E4FD8C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0F342899-42B6-48F4-8E1A-E09524E4FD8C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D2B5B361-F69F-4261-AA05-049E389CC045}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D2B5B361-F69F-4261-AA05-049E389CC045}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D2B5B361-F69F-4261-AA05-049E389CC045}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D2B5B361-F69F-4261-AA05-049E389CC045}.Release|Any CPU.Build.0 = Release|Any CPU
+		{511B2977-F18D-4B36-BFDF-02507C7E18A2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{511B2977-F18D-4B36-BFDF-02507C7E18A2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{511B2977-F18D-4B36-BFDF-02507C7E18A2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{511B2977-F18D-4B36-BFDF-02507C7E18A2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{67909D36-7990-44A7-99CB-BCFE16FCA18B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{67909D36-7990-44A7-99CB-BCFE16FCA18B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{67909D36-7990-44A7-99CB-BCFE16FCA18B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{67909D36-7990-44A7-99CB-BCFE16FCA18B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
