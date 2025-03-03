@@ -36,12 +36,15 @@ var interval = Environment.GetEnvironmentVariable("TWITTER_DOWNLOAD_INTERVAL") ?
 var gAgent = await gAgentFactory.GetGAgentAsync<IStateGAgent<TweetsDownloaderState>>(guid,
     new TwitterDownloaderConfiguration
     {
-        BearerToken = twitterBearerToken,
-        UserIds = userIds,
-        PollingInterval = TimeSpan.Parse(interval),
-        Neo4jUri = "bolt://localhost:7687",
-        Neo4jUser = "neo4j",
-        Neo4jPassword = "neo4jneo4j"
+        Configuration = new Configuration()
+        {
+            BearerToken = twitterBearerToken,
+            UserIds = userIds,
+            PollingInterval = TimeSpan.Parse(interval),
+            Neo4jUri = "bolt://localhost:7687",
+            Neo4jUser = "neo4j",
+            Neo4jPassword = "neo4jneo4j"
+        }
     });
 
 Console.WriteLine("Twitter downloader initialized.");

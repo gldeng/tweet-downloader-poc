@@ -11,36 +11,32 @@ using Org.OpenAPITools.Model;
 namespace TweetDownloader.GAgents;
 
 [GenerateSerializer]
+public class Configuration
+{
+    [Id(0)] public string BearerToken { get; set; } = string.Empty;
+    [Id(1)] public List<string> UserIds { get; set; } = new List<string>();
+    [Id(2)] public TimeSpan PollingInterval { get; set; } = TimeSpan.FromMinutes(15);
+    [Id(3)] public string Neo4jUri { get; set; } = "bolt://localhost:7687";
+    [Id(4)] public string Neo4jUser { get; set; } = "neo4j";
+    [Id(5)] public string Neo4jPassword { get; set; } = "password";
+}
+
+[GenerateSerializer]
 public class TwitterDownloaderConfiguration : ConfigurationBase
 {
-    [Id(1)] public string BearerToken { get; set; } = string.Empty;
-    [Id(2)] public List<string> UserIds { get; set; } = new List<string>();
-    [Id(3)] public TimeSpan PollingInterval { get; set; } = TimeSpan.FromMinutes(15);
-    [Id(4)] public string Neo4jUri { get; set; } = "bolt://localhost:7687";
-    [Id(5)] public string Neo4jUser { get; set; } = "neo4j";
-    [Id(6)] public string Neo4jPassword { get; set; } = "password";
+    [Id(0)] public Configuration Configuration { get; set; } = new Configuration();
 }
 
 [GenerateSerializer]
 public class TweetsDownloaderState : StateBase
 {
     [Id(0)] public bool Configured { get; set; } = false;
-    [Id(1)] public string BearerToken { get; set; } = string.Empty;
-    [Id(2)] public List<string> UserIds { get; set; } = new List<string>();
-    [Id(3)] public TimeSpan PollingInterval { get; set; } = TimeSpan.FromMinutes(15);
-    [Id(4)] public string Neo4jUri { get; set; } = string.Empty;
-    [Id(5)] public string Neo4jUser { get; set; } = string.Empty;
-    [Id(6)] public string Neo4jPassword { get; set; } = string.Empty;
-    [Id(7)] public Dictionary<string, string> LastTweetIdPerUser { get; set; } = new Dictionary<string, string>();
+    [Id(1)] public Configuration Configuration { get; set; } = new Configuration();
+    [Id(2)] public Dictionary<string, string> LastTweetIdPerUser { get; set; } = new Dictionary<string, string>();
 
     public void Apply(TweetsDownloaderConfiguredEvent @event)
     {
-        this.BearerToken = @event.BearerToken;
-        this.UserIds = @event.UserIds;
-        this.PollingInterval = @event.PollingInterval;
-        this.Neo4jUri = @event.Neo4jUri;
-        this.Neo4jUser = @event.Neo4jUser;
-        this.Neo4jPassword = @event.Neo4jPassword;
+        this.Configuration = @event.Configuration;
         this.Configured = true;
     }
 
@@ -56,12 +52,7 @@ public class TweetsDownloaderStateLogEvent : StateLogEventBase<TweetsDownloaderS
 [GenerateSerializer]
 public class TweetsDownloaderConfiguredEvent : TweetsDownloaderStateLogEvent
 {
-    [Id(0)] public string BearerToken { get; set; } = string.Empty;
-    [Id(1)] public List<string> UserIds { get; set; } = new List<string>();
-    [Id(2)] public TimeSpan PollingInterval { get; set; } = TimeSpan.FromMinutes(15);
-    [Id(3)] public string Neo4jUri { get; set; } = string.Empty;
-    [Id(4)] public string Neo4jUser { get; set; } = string.Empty;
-    [Id(5)] public string Neo4jPassword { get; set; } = string.Empty;
+    [Id(0)] public Configuration Configuration { get; set; } = new Configuration();
 }
 
 [GenerateSerializer]
@@ -86,16 +77,24 @@ public class TweetsDownloaderGrain :
     private IDisposable? _downloadTimer;
     private IDriver? _neo4jDriver;
 
-    private bool _neo4jConfigured => !string.IsNullOrEmpty(State.Neo4jUri) &&
-                                     !string.IsNullOrEmpty(State.Neo4jUser) &&
-                                     !string.IsNullOrEmpty(State.Neo4jPassword);
+    private IDriver Neo4jDriver
+    {
+        get
+        {
+            if (_neo4jDriver != null) return _neo4jDriver;
+            _neo4jDriver = GraphDatabase.Driver(
+                State.Configuration.Neo4jUri,
+                AuthTokens.Basic(State.Configuration.Neo4jUser, State.Configuration.Neo4jPassword));
+            return _neo4jDriver;
+        }
+    }
 
     private TokenProvider<BearerToken> BearerTokenProvider
     {
         get
         {
             if (_bearerTokenProvider != null) return _bearerTokenProvider;
-            var bearerToken = new BearerToken(State.BearerToken);
+            var bearerToken = new BearerToken(State.Configuration.BearerToken);
             var bearerTokenContainer = new TokenContainer<BearerToken>(new[] { bearerToken });
             _bearerTokenProvider = new RateLimitProvider<BearerToken>(bearerTokenContainer);
 
@@ -108,7 +107,7 @@ public class TweetsDownloaderGrain :
         get
         {
             if (_oauthTokenProvider != null) return _oauthTokenProvider;
-            var oauthToken = new OAuthToken(State.BearerToken);
+            var oauthToken = new OAuthToken(State.Configuration.BearerToken);
             var oauthTokenContainer = new TokenContainer<OAuthToken>(new[] { oauthToken });
             _oauthTokenProvider = new RateLimitProvider<OAuthToken>(oauthTokenContainer);
 
@@ -163,36 +162,22 @@ public class TweetsDownloaderGrain :
 
     protected override async Task PerformConfigAsync(TwitterDownloaderConfiguration config)
     {
-        State.BearerToken = config.BearerToken;
-        State.UserIds = config.UserIds;
-        State.PollingInterval = config.PollingInterval;
-        State.Neo4jUri = config.Neo4jUri;
-        State.Neo4jUser = config.Neo4jUser;
-        State.Neo4jPassword = config.Neo4jPassword;
+        State.Configuration = config.Configuration;
         State.Configured = true;
 
-        // Initialize Neo4j driver
-        InitializeNeo4jDriver();
+        RaiseEvent(new TweetsDownloaderConfiguredEvent
+        {
+            Configuration = config.Configuration
+        });
+        await ConfirmEvents();
 
         // RegisterTimer in OnGAgentActivateAsync won't work if the grain is activated for the first time
         // when it's not received configuration. So we need to try to register it again here.
         RegisterTimer();
-
-        RaiseEvent(new TweetsDownloaderConfiguredEvent
-        {
-            BearerToken = config.BearerToken,
-            UserIds = config.UserIds,
-            PollingInterval = config.PollingInterval,
-            Neo4jUri = config.Neo4jUri,
-            Neo4jUser = config.Neo4jUser,
-            Neo4jPassword = config.Neo4jPassword
-        });
-        await ConfirmEvents();
     }
 
     protected override Task OnGAgentActivateAsync(CancellationToken token)
     {
-        InitializeNeo4jDriver();
         RegisterTimer();
 
         return Task.CompletedTask;
@@ -204,24 +189,6 @@ public class TweetsDownloaderGrain :
     {
         await base.OnDeactivateAsync(reason, cancellationToken);
         await DisposeNeo4jDriverAsync();
-    }
-
-    private void InitializeNeo4jDriver()
-    {
-        if (_neo4jDriver != null || !_neo4jConfigured)
-            return;
-
-        try
-        {
-            _neo4jDriver = GraphDatabase.Driver(
-                State.Neo4jUri,
-                AuthTokens.Basic(State.Neo4jUser, State.Neo4jPassword));
-            _logger.LogInformation("Neo4j driver initialized successfully");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to initialize Neo4j driver");
-        }
     }
 
     private async Task DisposeNeo4jDriverAsync()
@@ -239,7 +206,7 @@ public class TweetsDownloaderGrain :
             return;
         UnregisterTimer();
 
-        if (State.UserIds is not [_, ..] || string.IsNullOrEmpty(State.BearerToken))
+        if (State.Configuration.UserIds is not [_, ..] || string.IsNullOrEmpty(State.Configuration.BearerToken))
         {
             _logger.LogWarning("Skipping timer registration as either UserIds or BearerToken is not set.");
             return;
@@ -248,7 +215,7 @@ public class TweetsDownloaderGrain :
         _downloadTimer = this.RegisterGrainTimer(
             DownloadPostsTimerCallbackAsync,
             TimeSpan.Zero,
-            State.PollingInterval
+            State.Configuration.PollingInterval
         );
     }
 
@@ -279,7 +246,7 @@ public class TweetsDownloaderGrain :
 
     public async Task<List<Tweet>> DownloadPostsForUserAsync(string userId, int maxPosts = 10)
     {
-        if (string.IsNullOrEmpty(State.BearerToken))
+        if (string.IsNullOrEmpty(State.Configuration.BearerToken))
         {
             throw new InvalidOperationException("Bearer token not set. Call SetBearerTokenAsync first.");
         }
@@ -345,7 +312,7 @@ public class TweetsDownloaderGrain :
 
     public async Task DownloadPostsForAllMonitoredAccountsAsync(int maxPostsPerAccount = 10)
     {
-        foreach (var userId in State.UserIds)
+        foreach (var userId in State.Configuration.UserIds)
         {
             try
             {
@@ -360,12 +327,9 @@ public class TweetsDownloaderGrain :
 
     private async Task StoreTweetInNeo4jAsync(Tweet tweet, string authorId)
     {
-        if (_neo4jDriver == null || !_neo4jConfigured)
-            return;
-
         try
         {
-            var session = _neo4jDriver.AsyncSession();
+            var session = Neo4jDriver.AsyncSession();
             try
             {
                 // Create or update User node
@@ -399,6 +363,10 @@ public class TweetsDownloaderGrain :
                 });
 
                 _logger.LogInformation("Successfully stored tweet {TweetId} in Neo4j", tweet.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error storing tweet {TweetId} in Neo4j", tweet.Id);
             }
             finally
             {
